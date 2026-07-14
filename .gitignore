@@ -1,0 +1,29 @@
+# Build output
+/build/bin/
+/build/obj/
+*.asi
+*.dll
+*.exp
+*.lib
+*.pdb
+*.ilk
+*.obj
+*.log
+
+# MSVC / VS
+.vs/
+*.user
+*.suo
+Debug/
+Release/
+x64/
+Win32/
+
+# CMake
+/cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+
+# Editor
+.idea/
+*.swp
