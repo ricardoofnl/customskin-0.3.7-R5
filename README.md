@@ -1,7 +1,7 @@
 # customskin-037
 
 A client-side `.asi` plugin for **SA-MP 0.3.7-R5** (GTA: San Andreas) that adds **custom
-player skin** support against an **open.mp** server — i.e. it lets a stock 0.3.7 client use
+player skin** support against an **open.mp** server  i.e. it lets a stock 0.3.7 client use
 open.mp's 0.3DL "artwork" custom models without switching to the 0.3DL client.
 
 > Status: **early / in development.** See `PROGRESS` below for what works. This is a
@@ -15,9 +15,9 @@ open.mp only sends custom models to clients that identify as **0.3DL**. This plu
 
 1. **Masquerades as 0.3DL** during connect (client version `4062` + auth token
    `challenge ^ 4062`) so open.mp enables artwork for us.
-2. **Speaks the artwork protocol** — receives the model list (`RPC 179`), downloads the
+2. **Speaks the artwork protocol**  receives the model list (`RPC 179`), downloads the
    `.dff`/`.txd` over HTTP (`User-Agent: SAMP/0.3`), CRC32-verifies them, and caches them.
-3. **Loads the models into GTA SA** — registers custom skin IDs `20000..30000` into the
+3. **Loads the models into GTA SA**  registers custom skin IDs `20000..30000` into the
    streaming system and applies them to the right peds.
 
 Milestone 1 = **skins only** (`AddCharModel`). Objects come later.
@@ -29,7 +29,7 @@ The protocol, RPC ids, version constants and cache layout are documented in
 
 - GTA: San Andreas (1.0 US) + **SA-MP 0.3.7-R5** client.
 - An **ASI loader** (Silent's ASI Loader / the `vorbisFile.dll` proxy). The user is already
-  using `vorbisFile.dll` — drop `customskin.asi` next to `gta_sa.exe`.
+  using `vorbisFile.dll`  drop `customskin.asi` next to `gta_sa.exe`.
 - An **open.mp** server with `artwork.enable 1` and at least one `AddCharModel` in
   `models/artconfig.txt`.
 
@@ -69,12 +69,12 @@ build/               msbuild project + CMake
 
 ## PROGRESS
 
-- [x] Phase 0 — scaffold, build, loader (loads, resolves samp.dll, logs a fingerprint)
-- [ ] Phase 1 — RakNet/RPC hooks
-- [ ] Phase 2 — DL masquerade + packet compat
-- [ ] Phase 3 — artwork download pipeline
-- [ ] Phase 4 — streaming integration (skins render)
-- [ ] Phase 5 — robustness / polish
+- [x] Phase 0  scaffold, build, loader (loads, resolves samp.dll, logs a fingerprint)
+- [ ] Phase 1  RakNet/RPC hooks
+- [ ] Phase 2  DL masquerade + packet compat
+- [ ] Phase 3  artwork download pipeline
+- [ ] Phase 4  streaming integration (skins render)
+- [ ] Phase 5  robustness / polish
 
 ## Credits / references
 
