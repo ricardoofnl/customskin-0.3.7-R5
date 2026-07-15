@@ -7,6 +7,8 @@
 
 #include "core/log.h"
 #include "core/samp.h"
+#include "net/artwork.h"
+#include "net/raknet.h"
 
 namespace {
 
@@ -42,9 +44,15 @@ DWORD WINAPI MainThread(LPVOID) {
     samp::DumpFingerprint();
     CS_LOGI("Phase 0 online (samp.dll @ 0x%08X)", static_cast<unsigned>(samp::Base()));
 
-    // Phase 1+ subsystems will boot here, e.g.:
-    //   net::Init();     // RakNet/RPC hooks, DL masquerade, artwork RPCs
-    //   model::Init();   // download pipeline + streaming integration
+    // Phase 1: RakNet/RPC plumbing + artwork RPC handlers (fire once the DL
+    // masquerade in Phase 2 makes the server send them).
+    if (net::Init()) {
+        artwork::Init();
+        CS_LOGI("Phase 1 online (RakNet hooks + artwork RPC handlers)");
+    } else {
+        CS_LOGE("Phase 1 init failed (net::Init)");
+    }
+    // Phase 2+ subsystems will boot here (version masquerade, packet compat, streamer).
 
     // Announce ourselves in chat once the chat object exists (created around the
     // main menu). Poll up to ~120s, then give up quietly.

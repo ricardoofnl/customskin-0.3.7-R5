@@ -62,11 +62,18 @@
     <ClCompile Include="..\src\dllmain.cpp" />
     <ClCompile Include="..\src\core\log.cpp" />
     <ClCompile Include="..\src\core\samp.cpp" />
+    <ClCompile Include="..\src\net\raknet.cpp" />
+    <ClCompile Include="..\src\net\artwork.cpp" />
+    <ClCompile Include="..\vendor\raknet\bitstream.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\core\log.h" />
     <ClInclude Include="..\src\core\samp.h" />
+    <ClInclude Include="..\src\net\raknet.h" />
+    <ClInclude Include="..\src\net\artwork.h" />
     <ClInclude Include="..\vendor\urmem\urmem.hpp" />
+    <ClInclude Include="..\vendor\raknet\rakclient.h" />
+    <ClInclude Include="..\vendor\raknet\bitstream.h" />
   </ItemGroup>
 
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
