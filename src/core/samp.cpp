@@ -40,6 +40,10 @@ uintptr_t Base() { return g_base; }
 uint32_t ImageSize() { return g_imageSize; }
 uint32_t TimeDateStamp() { return g_timeDateStamp; }
 
+bool IsR5Build() {
+    return g_base && g_imageSize == r5::kImageSize && g_timeDateStamp == r5::kTimeDateStamp;
+}
+
 void DumpFingerprint() {
     if (!g_base) {
         CS_LOGW("DumpFingerprint: samp.dll not resolved");
@@ -47,6 +51,12 @@ void DumpFingerprint() {
     }
     CS_LOGI("samp.dll base=0x%08X SizeOfImage=0x%X (%u bytes) TimeDateStamp=0x%08X",
             static_cast<unsigned>(g_base), g_imageSize, g_imageSize, g_timeDateStamp);
+    if (IsR5Build())
+        CS_LOGI("fingerprint matches known 0.3.7-R5-1 build");
+    else
+        CS_LOGW("fingerprint MISMATCH: expected SizeOfImage=0x%X TimeDateStamp=0x%08X; "
+                "network patches are unsafe on this build",
+                r5::kImageSize, r5::kTimeDateStamp);
 
     // Log the first bytes at a few anchor functions so the R5 offset table can be
     // sanity-checked against the user's actual samp.dll (mismatch => wrong build).
@@ -73,16 +83,11 @@ bool DebugChat(const char* fmt, ...) {
     va_end(args);
     buf[sizeof(buf) - 1] = '\0';
 
-    if (!g_base) {
-        CS_LOGI("[chat pending] %s", buf);
-        return false;
-    }
-
+    // Chat object is created around the main menu; stay silent (no log spam)
+    // until it exists, so callers can poll cheaply.
+    if (!g_base) return false;
     void* chat = *reinterpret_cast<void**>(Addr(r5::kRefChat));
-    if (!chat) {
-        CS_LOGI("[chat pending] %s", buf);
-        return false;
-    }
+    if (!chat) return false;
 
     // CChat::AddMessage(this, D3DCOLOR color, const char* text) — thiscall.
     urmem::call_function<urmem::calling_convention::thiscall, void>(

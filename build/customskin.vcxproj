@@ -64,6 +64,7 @@
     <ClCompile Include="..\src\core\samp.cpp" />
     <ClCompile Include="..\src\net\raknet.cpp" />
     <ClCompile Include="..\src\net\artwork.cpp" />
+    <ClCompile Include="..\src\net\masquerade.cpp" />
     <ClCompile Include="..\vendor\raknet\bitstream.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -71,6 +72,7 @@
     <ClInclude Include="..\src\core\samp.h" />
     <ClInclude Include="..\src\net\raknet.h" />
     <ClInclude Include="..\src\net\artwork.h" />
+    <ClInclude Include="..\src\net\masquerade.h" />
     <ClInclude Include="..\vendor\urmem\urmem.hpp" />
     <ClInclude Include="..\vendor\raknet\rakclient.h" />
     <ClInclude Include="..\vendor\raknet\bitstream.h" />

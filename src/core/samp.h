@@ -17,6 +17,11 @@ namespace r5 {
 constexpr uintptr_t kRefChat = 0x26EB80;    // CChat**
 constexpr uintptr_t kRefNetGame = 0x26EB94; // CNetGame**
 
+// PE fingerprint of the validated 0.3.7-R5-1 samp.dll (confirmed against a
+// known-good client). Used as a build guard before applying network patches.
+constexpr uint32_t kImageSize = 0x0027E000;
+constexpr uint32_t kTimeDateStamp = 0x6372C39E;
+
 // CChat methods (thiscall).
 constexpr uintptr_t kCChat_AddMessage = 0x68170; // (this, D3DCOLOR color, const char* text)
 constexpr uintptr_t kCChat_AddEntry = 0x67BE0;   // (this, int type, text, prefix, textColor, prefixColor)
@@ -26,13 +31,14 @@ constexpr uintptr_t kCNetGame_GetRakClient = 0xBBC0;              // -> RakClien
 constexpr uintptr_t kCNetGame_Connect = 0x8940;                  // anchor
 constexpr uintptr_t kCNetGame_Packet_ConnectionSucceeded = 0xAD80; // anchor (auth/token path)
 
-// --- Phase 2 (DL masquerade), still to be resolved on the R5 binary ---------
-// The client version code 4057 (0x0FD9) and the auth token (= challenge ^ version)
-// are formed along the connect/auth path (near Packet_ConnectionSucceeded above and
-// the RPC_ClientJoin send). Find the exact byte-patch sites via the matching 0.3.7
-// decompilation at https://github.com/dashr9230/SA-MP plus a disasm of the anchors.
-// constexpr uintptr_t kVersionConstSite = 0; // patch imm 0x0FD9 -> 0x0FDE
-// constexpr uintptr_t kTokenXorSite     = 0; // patch imm 0x0FD9 -> 0x0FDE
+// DL masquerade patch sites (found by disasm of Packet_ConnectionSucceeded).
+// The client builds its RPC_ClientJoin here with version 4057 (0x0FD9) and
+// ChallengeResponse = cookie ^ 4057. To be treated as 0.3DL by open.mp we change
+// 4057 (0x0FD9) -> 4062 (0x0FDE) at both sites: patch the low imm byte 0xD9 -> 0xDE.
+//   1000ae62: 81 f2 d9 0f 00 00       xor edx,0xfd9          (ChallengeResponse)
+//   1000aeca: c7 44 24 28 d9 0f 00 00 mov [esp+0x28],0xfd9   (VersionNumber)
+constexpr uintptr_t kChallengeImmLowByte = 0xAE64; // 0xD9 -> 0xDE
+constexpr uintptr_t kVersionImmLowByte = 0xAECE;   // 0xD9 -> 0xDE
 
 } // namespace r5
 
@@ -49,6 +55,10 @@ inline uintptr_t Addr(uintptr_t rva) { return Base() + rva; }
 // PE fingerprint of the loaded samp.dll (for verifying the build is really R5-1).
 uint32_t ImageSize();
 uint32_t TimeDateStamp();
+
+// True if the loaded samp.dll matches the validated 0.3.7-R5-1 fingerprint.
+// Network patches refuse to apply unless this is true.
+bool IsR5Build();
 
 // Log the fingerprint + bytes at a few anchor offsets. Helps confirm the offset
 // table matches the user's actual samp.dll.

@@ -8,6 +8,7 @@
 #include "core/log.h"
 #include "core/samp.h"
 #include "net/artwork.h"
+#include "net/masquerade.h"
 #include "net/raknet.h"
 
 namespace {
@@ -52,7 +53,16 @@ DWORD WINAPI MainThread(LPVOID) {
     } else {
         CS_LOGE("Phase 1 init failed (net::Init)");
     }
-    // Phase 2+ subsystems will boot here (version masquerade, packet compat, streamer).
+
+    // Phase 2a: identify as 0.3DL so open.mp enables the artwork path and sends us
+    // the custom-model RPCs. Must be applied before connecting.
+    if (masq::Apply()) {
+        CS_LOGI("Phase 2a online (DL masquerade). Connect to your open.mp server; "
+                "expect 'artwork: RPC179 ModelRequest' in the log.");
+    } else {
+        CS_LOGW("Phase 2a NOT applied (see masq errors above); still a plain 0.3.7 client");
+    }
+    // Phase 2b (DL-format packet compat) + Phase 3/4 boot here next.
 
     // Announce ourselves in chat once the chat object exists (created around the
     // main menu). Poll up to ~120s, then give up quietly.
