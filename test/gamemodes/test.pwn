@@ -24,7 +24,7 @@ public OnGameModeInit()
 
     // A spawn class wearing the custom skin: this is the Phase 4 render target, and it
     // also exercises the DL-format class/spawn RPCs that Phase 2b must handle.
-    AddPlayerClass(CUSTOM_SKIN_ID, 1958.3783, 1343.1572, 15.3746, 269.1425, 0, 0, 0, 0, 0, 0);
+    AddPlayerClass(CUSTOM_SKIN_ID, 1958.3783, 1343.1572, 15.3746, 269.1425);
     return 1;
 }
 
@@ -44,9 +44,9 @@ public OnPlayerRequestClass(playerid, classid)
 }
 
 // open.mp artwork callbacks - handy server-side visibility during testing.
-public OnPlayerRequestDownload(playerid, type, crc)
+public OnPlayerRequestDownload(playerid, DOWNLOAD_REQUEST:type, crc)
 {
-    printf("[test] player %d requests download type=%d crc=0x%08x", playerid, type, crc);
+    printf("[test] player %d requests download type=%d crc=0x%08x", playerid, _:type, crc);
     return 1; // allow the default webserver download
 }
 

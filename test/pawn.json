@@ -1,0 +1,12 @@
+{
+	"user": "local",
+	"repo": "customskin-037-test",
+	"preset": "openmp",
+	"entry": "gamemodes/test.pwn",
+	"output": "gamemodes/test.amx",
+	"dependencies": [
+		"openmultiplayer/omp-stdlib",
+		"pawn-lang/samp-stdlib@open.mp",
+		"pawn-lang/pawn-stdlib@open.mp"
+	]
+}

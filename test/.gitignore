@@ -1,0 +1,18 @@
+# sampctl / open.mp runtime - regenerate with `sampctl ensure` (do not commit)
+/omp-server
+/omp-server.exe
+/components/
+/dependencies/
+/plugins/
+/filterscripts/
+/npcmodes/
+/scriptfiles/
+/qawno/
+/pawn.lock
+/sampctl_build_file.inc
+/config.json.mine
+/log.txt
+/*.db
+
+# compiled gamemode
+/gamemodes/*.amx
