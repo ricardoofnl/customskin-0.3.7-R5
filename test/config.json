@@ -1,0 +1,42 @@
+{
+  "name": "customskin-037 test",
+  "announce": false,
+  "enable_query": true,
+  "max_players": 20,
+  "sleep": 5.0,
+  "use_dyn_ticks": true,
+  "network": {
+    "allow_037_clients": true,
+    "bind": "",
+    "public_addr": "127.0.0.1",
+    "port": 7777,
+    "http_threads": 50
+  },
+  "artwork": {
+    "enable": true,
+    "port": 7777,
+    "models_path": "models",
+    "cdn": "",
+    "web_server_bind": "127.0.0.1",
+    "show_crc_logs": true
+  },
+  "pawn": {
+    "legacy_plugins": [],
+    "main_scripts": ["test 1"],
+    "side_scripts": []
+  },
+  "game": {
+    "use_all_animations": true,
+    "use_player_ped_anims": true,
+    "validate_animations": false
+  },
+  "rcon": {
+    "enable": false,
+    "password": "changeme"
+  },
+  "logging": {
+    "enable": true,
+    "log_cookies": true,
+    "log_connection_messages": true
+  }
+}

@@ -27,3 +27,7 @@ CMakeFiles/
 # Editor
 .idea/
 *.swp
+
+# test placeholder model files (regenerate with test/make-models.sh)
+/test/models/*.dff
+/test/models/*.txd
