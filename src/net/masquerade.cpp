@@ -14,9 +14,9 @@ namespace {
 std::vector<std::unique_ptr<urmem::patch>> g_patches;
 bool g_enabled = false;
 
-// Patch a single code byte at `rva`, but only if it currently holds `expected`.
-// This guards against a wrong build, an already-applied patch, or another mod
-// having modified the site.
+// patch a single code byte at `rva`, but only if it currently holds `expected`
+// this guards against a wrong build, an already-applied patch, or another mod
+// having modified the site
 bool PatchByte(uintptr_t rva, uint8_t expected, uint8_t value) {
     auto addr = samp::Addr(rva);
     uint8_t cur = *reinterpret_cast<volatile uint8_t*>(addr);
@@ -43,7 +43,7 @@ bool Apply() {
         return false;
     }
     // 4057 (0x0FD9) -> 4062 (0x0FDE): flip the low imm byte 0xD9 -> 0xDE at both the
-    // ChallengeResponse XOR and the VersionNumber store.
+    // ChallengeResponse xor and the VersionNumber store
     if (!PatchByte(samp::r5::kChallengeImmLowByte, 0xD9, 0xDE)
         || !PatchByte(samp::r5::kVersionImmLowByte, 0xD9, 0xDE)) {
         g_patches.clear(); // rollback: urmem::patch dtor restores original bytes

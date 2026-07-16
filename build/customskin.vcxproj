@@ -50,7 +50,7 @@
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>wininet.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>wininet.lib;shell32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>copy /Y "$(TargetPath)" "$(OutDir)customskin.asi"</Command>
@@ -65,6 +65,12 @@
     <ClCompile Include="..\src\net\raknet.cpp" />
     <ClCompile Include="..\src\net\artwork.cpp" />
     <ClCompile Include="..\src\net\masquerade.cpp" />
+    <ClCompile Include="..\src\net\dlcompat.cpp" />
+    <ClCompile Include="..\src\model\crc32.cpp" />
+    <ClCompile Include="..\src\model\cache.cpp" />
+    <ClCompile Include="..\src\model\download.cpp" />
+    <ClCompile Include="..\src\game\rwmodel.cpp" />
+    <ClCompile Include="..\src\game\render.cpp" />
     <ClCompile Include="..\vendor\raknet\bitstream.cpp" />
   </ItemGroup>
   <ItemGroup>

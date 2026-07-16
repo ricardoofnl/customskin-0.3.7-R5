@@ -17,7 +17,7 @@ urmem::hook g_connHook;
 RakClientInterface* g_rak = nullptr;
 std::vector<std::pair<uint8_t, RpcHandler>> g_wanted; // desired incoming handlers
 
-// CNetGame::GetRakClient() via RefNetGame(). Valid once a CNetGame exists.
+// CNetGame::GetRakClient() via RefNetGame(). valid once a CNetGame exists
 RakClientInterface* ResolveRak() {
     if (!samp::Base()) return nullptr;
     void* netgame = *reinterpret_cast<void**>(samp::Addr(samp::r5::kRefNetGame));
@@ -40,8 +40,8 @@ void ApplyRegistrations() {
             reinterpret_cast<void*>(g_rak), g_wanted.size());
 }
 
-// CNetGame::Packet_ConnectionSucceeded(this, Packet*) - thiscall.
-// __fastcall(self=ECX, edx=EDX, stack...) captures a thiscall on x86 MSVC.
+// CNetGame::Packet_ConnectionSucceeded(this, packet*) - thiscall
+// __fastcall(self=ecx, edx=edx, stack...) captures a thiscall on x86 msvc
 void __fastcall Hooked_ConnectionSucceeded(void* self, void* /*edx*/, void* packet) {
     g_connHook.call<urmem::calling_convention::thiscall, void>(self, packet);
     CS_LOGI("rak: ConnectionSucceeded");

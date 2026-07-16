@@ -1,23 +1,34 @@
-// Artwork (custom-model) subsystem.
+// artwork (custom-model) subsystem
 //
-// Phase 1: registers handlers for the open.mp artwork RPCs and logs receipt so we
-// can confirm the DL masquerade (Phase 2) makes them arrive.
-// Phase 3+: parses ModelRequest, drives the download pipeline, feeds the streamer.
+// phase 1: registers handlers for the open.mp artwork RPCs and logs receipt so we
+// can confirm the dl masquerade (phase 2) makes them arrive
+// phase 3+: parses ModelRequest, drives the download pipeline, feeds the streamer
 #pragma once
 
 namespace artwork {
 
-// Register the artwork RPC handlers with the net layer. Call after net::Init().
+// register the artwork rpc handlers with the net layer. call after net::Init()
 void Init();
 
-// RPC ids (see docs/protocol.md).
+// a downloaded + RenderWare-loaded custom model
+struct ReadyModel {
+    int newId = 0;
+    int baseId = 0;
+    void* clump = nullptr; // RpClump*
+    void* txd = nullptr;   // RwTexDictionary*
+};
+
+// look up a ready (clump+txd loaded) custom model by new id. false if not ready
+bool GetReadyModel(int newId, ReadyModel& out);
+
+// rpc ids (see docs/protocol.md)
 namespace rpc {
-constexpr unsigned char kModelRequest = 179;     // S->C
-constexpr unsigned char kRequestDFF = 181;       // C->S
-constexpr unsigned char kRequestTXD = 182;       // C->S
-constexpr unsigned char kModelUrl = 183;         // S->C
-constexpr unsigned char kFinishDownload = 184;   // C->S
-constexpr unsigned char kDownloadCompleted = 185; // S->C
+constexpr unsigned char kModelRequest = 179;     // s->c
+constexpr unsigned char kRequestDFF = 181;       // c->s
+constexpr unsigned char kRequestTXD = 182;       // c->s
+constexpr unsigned char kModelUrl = 183;         // s->c
+constexpr unsigned char kFinishDownload = 184;   // c->s
+constexpr unsigned char kDownloadCompleted = 185; // s->c
 } // namespace rpc
 
 } // namespace artwork

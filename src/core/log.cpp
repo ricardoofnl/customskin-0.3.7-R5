@@ -13,7 +13,7 @@ std::mutex g_mutex;
 std::string g_path;
 bool g_ready = false;
 
-// Resolve "<dir of gta_sa.exe>/customskin.log".
+// resolve "<dir of gta_sa.exe>/customskin.log"
 std::string ResolveLogPath() {
     char exe[MAX_PATH] = {0};
     DWORD n = GetModuleFileNameA(nullptr, exe, MAX_PATH);
@@ -31,7 +31,7 @@ std::string ResolveLogPath() {
 void LogInit() {
     std::lock_guard<std::mutex> lock(g_mutex);
     g_path = ResolveLogPath();
-    // Truncate on init.
+    // truncate on init
     if (FILE* f = std::fopen(g_path.c_str(), "w")) {
         SYSTEMTIME st;
         GetLocalTime(&st);
