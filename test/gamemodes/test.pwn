@@ -1,11 +1,11 @@
-// customskin-037 local test gamemode (open.mp).
+// customskin-037 local test gamemode (open.mp)
 //
-// Defines one custom player skin (id 20001, base 1). Its model files skin.dff /
+// defines one custom player skin (id 20001, base 1). its model files skin.dff /
 // skin.txd live in ../models/ and are served by open.mp's artwork webserver, so a
-// DL client (our customskin.asi masquerading as 0.3DL) receives RPC 179 for it and
-// downloads them from http://<public_addr>:<artwork.port>/.
+// dl client (our customskin.asi masquerading as 0.3DL) receives rpc 179 for it and
+// downloads them from http://<public_addr>:<artwork.port>/
 //
-// Compile to gamemodes/test.amx (see test/README.md) with a recent omp-stdlib.
+// compile to gamemodes/test.amx (see test/readme.md) with a recent omp-stdlib
 
 #include <open.mp>
 
@@ -16,14 +16,14 @@ public OnGameModeInit()
 {
     SetGameModeText("customskin-037 test");
 
-    // Register the custom skin. open.mp sends RPC 179 (ModelRequest) to DL clients.
+    // register the custom skin. open.mp sends rpc 179 (ModelRequest) to dl clients
     if (AddCharModel(CUSTOM_SKIN_BASE, CUSTOM_SKIN_ID, "skin.dff", "skin.txd"))
         print("[test] AddCharModel 20001 (base 1) OK");
     else
         print("[test] AddCharModel FAILED - check models/skin.dff and models/skin.txd exist");
 
-    // A spawn class wearing the custom skin: this is the Phase 4 render target, and it
-    // also exercises the DL-format class/spawn RPCs that Phase 2b must handle.
+    // a spawn class wearing the custom skin: this is the phase 4 render target, and it
+    // also exercises the dl-format class/spawn RPCs that phase 2b must handle
     AddPlayerClass(CUSTOM_SKIN_ID, 1958.3783, 1343.1572, 15.3746, 269.1425);
     return 1;
 }
@@ -43,7 +43,7 @@ public OnPlayerRequestClass(playerid, classid)
     return 1;
 }
 
-// open.mp artwork callbacks - handy server-side visibility during testing.
+// open.mp artwork callbacks - handy server-side visibility during testing
 public OnPlayerRequestDownload(playerid, DOWNLOAD_REQUEST:type, crc)
 {
     printf("[test] player %d requests download type=%d crc=0x%08x", playerid, _:type, crc);
