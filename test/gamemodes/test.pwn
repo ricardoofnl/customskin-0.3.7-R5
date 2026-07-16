@@ -5,8 +5,6 @@
 // dl client (our customskin.asi masquerading as 0.3DL) receives rpc 179 for it and
 // downloads them from http://<public_addr>:<artwork.port>/
 //
-// compile to gamemodes/test.amx (see test/readme.md) with a recent omp-stdlib
-
 #include <open.mp>
 
 #define CUSTOM_SKIN_ID   20001

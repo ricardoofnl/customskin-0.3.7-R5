@@ -19,4 +19,8 @@ uint32_t GetPlayerCustomSkin(uint16_t playerId);
 // first captured custom-skin mapping (single-skin test helper). false if none
 bool AnyCustomSkin(uint32_t& customIdOut);
 
+// true if any connected player is currently assigned custom skin `customId`. the renderer
+// uses this to only swap base templates that a real player wears (limits ambient bleed)
+bool IsCustomAssigned(uint32_t customId);
+
 } // namespace dlcompat

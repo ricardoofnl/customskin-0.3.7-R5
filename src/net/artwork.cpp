@@ -1,6 +1,7 @@
 #include "net/artwork.h"
 
 #include "core/log.h"
+#include "game/render.h"
 #include "game/rwmodel.h"
 #include "model/cache.h"
 #include "model/crc32.h"
@@ -94,8 +95,12 @@ void OnModelRequest(RPCParameters* p) {
     CS_LOGI("artwork: RPC179 ModelRequest #%u/%d type=%u base=%d new=%d dff=0x%08X(%u) txd=0x%08X(%u)",
             poolID, count, type, baseId, newId, dffCrc, dffSize, txdCrc, txdSize);
 
-    // poolID 0 begins a fresh model list (also handles reconnect / gmx re-send)
+    // poolID 0 begins a fresh model list (also handles reconnect / gmx re-send). put any
+    // swapped base templates back to the game's own clump BEFORE freeing the custom clumps
+    // they point at, then drop the old models so nothing is left dangling
     if (poolID == 0) {
+        render::RestoreAll();
+        for (auto& m : g_models) rwmodel::Free(m.loaded);
         g_models.clear();
         g_expected = static_cast<uint32_t>(count);
         g_finished = false;
@@ -187,9 +192,18 @@ bool GetReadyModel(int newId, ReadyModel& out) {
     return false;
 }
 
-namespace {
-
-} // namespace
+void ForEachReady(ReadyVisitor visit, void* ctx) {
+    if (!visit) return;
+    for (auto& m : g_models) {
+        if (!m.loaded.ok()) continue;
+        ReadyModel rm;
+        rm.newId = m.newId;
+        rm.baseId = m.baseId;
+        rm.clump = m.loaded.clump;
+        rm.txd = m.loaded.txd;
+        visit(rm, ctx);
+    }
+}
 
 void Init() {
     net::RegisterIncomingRPC(rpc::kModelRequest, &OnModelRequest);

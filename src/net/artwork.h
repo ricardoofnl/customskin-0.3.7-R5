@@ -21,6 +21,11 @@ struct ReadyModel {
 // look up a ready (clump+txd loaded) custom model by new id. false if not ready
 bool GetReadyModel(int newId, ReadyModel& out);
 
+// visit every ready (clump+txd loaded) custom model. `ctx` is passed through to `visit`.
+// allocation-free so the renderer can call it each frame
+using ReadyVisitor = void (*)(const ReadyModel&, void* ctx);
+void ForEachReady(ReadyVisitor visit, void* ctx);
+
 // rpc ids (see docs/protocol.md)
 namespace rpc {
 constexpr unsigned char kModelRequest = 179;     // s->c

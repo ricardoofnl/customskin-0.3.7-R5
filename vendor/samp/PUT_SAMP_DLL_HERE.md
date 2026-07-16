@@ -1,4 +1,4 @@
-# Local samp.dll (not committed)
+# Local samp.dll
 
 Drop your **0.3.7-R5** `samp.dll` here as `vendor/samp/samp.dll` so the toolchain can
 disassemble it while resolving byte-patch sites (version/token for the DL masquerade,

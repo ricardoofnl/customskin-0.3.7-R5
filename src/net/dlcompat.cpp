@@ -56,6 +56,12 @@ bool AnyCustomSkin(uint32_t& customIdOut) {
     return true;
 }
 
+bool IsCustomAssigned(uint32_t customId) {
+    for (auto& kv : g_playerCustomSkin)
+        if (kv.second == customId) return true;
+    return false;
+}
+
 bool Init() {
     if (!samp::IsR5Build()) {
         CS_LOGE("dlcompat: not R5 build; skipping");

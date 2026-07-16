@@ -67,15 +67,6 @@ docs/protocol.md     the open.mp artwork protocol reference
 build/               msbuild project + CMake
 ```
 
-## PROGRESS
-
-- [x] Phase 0  scaffold, build, loader (loads, resolves samp.dll, logs a fingerprint)
-- [x] Phase 1  RakNet/RPC hooks (build-verified; registers artwork RPCs 179/183/185, can send 181/182/184)
-- [ ] Phase 2  DL masquerade + packet compat
-- [ ] Phase 3  artwork download pipeline
-- [ ] Phase 4  streaming integration (skins render)
-- [ ] Phase 5  robustness / polish
-
 ## Credits / references
 
 - Protocol: [openmultiplayer/open.mp](https://github.com/openmultiplayer/open.mp)
