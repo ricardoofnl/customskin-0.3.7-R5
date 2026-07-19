@@ -71,8 +71,7 @@ void Free(Loaded& m) {
 }
 
 bool ReloadClump(Loaded& m, const char* dffPath) {
-    // deliberately does NOT free m.clump: the old clump was already destroyed by whoever
-    // stole it (the streamer). bind the existing txd and read a fresh clump
+    // deliberately does NOT free m.clump: the old clump was already destroyed by whoever stole it (the streamer). bind the existing txd and read a fresh clump
     m.clump = LoadClump(dffPath, m.txd);
     CS_LOGI("rw: ReloadClump clump=%p (dff=%s)", m.clump, dffPath);
     return m.clump != nullptr;

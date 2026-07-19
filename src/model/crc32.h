@@ -1,5 +1,4 @@
-// crc-32/ieee (poly 0xEDB88320, init/xorout 0xFFFFFFFF) - matches open.mp's
-// GetFileCRC32Checksum, so checksums we compute equal what the server sends
+// crc-32/ieee (poly 0xEDB88320, init/xorout 0xFFFFFFFF) - matches open.mp's GetFileCRC32Checksum, so checksums we compute equal what the server sends
 #pragma once
 
 #include <cstddef>

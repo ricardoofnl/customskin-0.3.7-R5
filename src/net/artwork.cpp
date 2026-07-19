@@ -4,7 +4,6 @@
 #include "game/render.h"
 #include "game/rwmodel.h"
 #include "model/cache.h"
-#include "model/crc32.h"
 #include "model/download.h"
 #include "net/raknet.h"
 
@@ -31,15 +30,14 @@ struct Model {
     uint8_t type = 0;
     FileReq dff;
     FileReq txd;
-    rwmodel::Loaded loaded; // filled on DownloadCompleted (phase 4.1)
+    rwmodel::Loaded loaded; // filled on DownloadCompleted
 };
 
 std::vector<Model> g_models;
 uint32_t g_expected = 0;
 bool g_finished = false;
 
-// true if some already-registered model's file with this checksum was requested or is ready.
-// several models can share a file (e.g. a common txd), so we only ask the server once
+// true if some already-registered model's file with this checksum was requested or is ready. several models can share a file (e.g. a common txd), so we only ask the server once
 bool AlreadyInFlight(uint32_t crc) {
     for (auto& m : g_models) {
         if (m.dff.crc == crc && (m.dff.requested || m.dff.ready)) return true;
@@ -76,8 +74,7 @@ FileReq* FindByCrc(uint32_t crc) {
     return nullptr;
 }
 
-// mark every registered file with this checksum ready (models sharing a file all complete
-// off a single download). returns how many file slots were flipped
+// mark every registered file with this checksum ready (models sharing a file all complete off a single download). returns how many file slots were flipped
 int MarkReadyByCrc(uint32_t crc) {
     int n = 0;
     for (auto& m : g_models) {
@@ -122,9 +119,7 @@ void OnModelRequest(RPCParameters* p) {
     CS_LOGI("artwork: RPC179 ModelRequest #%u/%d type=%u base=%d new=%d dff=0x%08X(%u) txd=0x%08X(%u)",
             poolID, count, type, baseId, newId, dffCrc, dffSize, txdCrc, txdSize);
 
-    // poolID 0 begins a fresh model list (also handles reconnect / gmx re-send). put any
-    // swapped base templates back to the game's own clump BEFORE freeing the custom clumps
-    // they point at, then drop the old models so nothing is left dangling
+    // poolID 0 begins a fresh model list (also handles reconnect / gmx re-send). put any swapped base templates back to the game's own clump BEFORE freeing the custom clumps they point at, then drop the old models so nothing is left dangling
     if (poolID == 0) {
         render::RestoreAll();
         for (auto& m : g_models) rwmodel::Free(m.loaded);
@@ -167,19 +162,9 @@ void OnModelUrl(RPCParameters* p) {
     }
     CS_LOGI("artwork: RPC183 ModelUrl %s 0x%08X url=\"%s\"", fr->isDff ? "dff" : "txd", checksum, url);
 
+    // hand the fetch+verify to the background worker so a slow/large file never freezes the net/main thread. the result is applied in Pump() (main thread) once the worker finishes
     std::string dest = cache::PathFor(checksum, fr->isDff);
-    if (dl::Fetch(url, dest)) {
-        uint32_t got = crc::File(dest.c_str());
-        if (got == checksum) {
-            int n = MarkReadyByCrc(checksum); // mark all models sharing this file
-            CS_LOGI("artwork: verified %s 0x%08X (%d file slot(s))", fr->isDff ? "dff" : "txd", checksum, n);
-        } else {
-            CS_LOGE("artwork: CRC mismatch 0x%08X != downloaded 0x%08X", checksum, got);
-        }
-    } else {
-        CS_LOGE("artwork: download failed for 0x%08X", checksum);
-    }
-    MaybeFinish();
+    dl::Enqueue(url, dest, checksum, fr->isDff);
 }
 
 // 185 DownloadCompleted (s->c): server acknowledged our FinishDownload
@@ -187,9 +172,7 @@ void OnDownloadCompleted(RPCParameters* /*p*/) {
     CS_LOGI("artwork: RPC185 DownloadCompleted - server acknowledged (%zu models cached)",
             g_models.size());
 
-    // phase 4.1: prove RenderWare can parse the downloaded files (resident load)
-    // with the random placeholder files this fails gracefully (no clump chunk);
-    // with a real skin's .dff/.txd it produces a clump + txd
+    // prove RenderWare can parse the downloaded files (resident load) with the random placeholder files this fails gracefully (no clump chunk); with a real skin's .dff/.txd it produces a clump + txd
     for (auto& m : g_models) {
         if (m.loaded.ok()) continue; // already loaded
         std::string dffPath = cache::PathFor(m.dff.crc, true);
@@ -201,7 +184,7 @@ void OnDownloadCompleted(RPCParameters* /*p*/) {
             CS_LOGW("artwork: model %d RW-load incomplete (clump=%p txd=%p) - invalid/random file?",
                     m.newId, m.loaded.clump, m.loaded.txd);
     }
-    // phase 4.3 (render::Tick) applies these loaded clumps to peds
+    // (render::Tick) applies these loaded clumps to peds
 }
 
 } // namespace
@@ -249,6 +232,19 @@ void OnCustomClumpLost(void* clump, bool reload) {
         }
         return;
     }
+}
+
+void Pump() {
+    std::vector<dl::Result> results = dl::Drain();
+    for (const auto& r : results) {
+        if (r.ok) {
+            int n = MarkReadyByCrc(r.crc); // mark all models sharing this file
+            CS_LOGI("artwork: verified %s 0x%08X (%d file slot(s))", r.isDff ? "dff" : "txd", r.crc, n);
+        } else {
+            CS_LOGE("artwork: async download/verify failed for 0x%08X", r.crc);
+        }
+    }
+    if (!results.empty()) MaybeFinish();
 }
 
 void Init() {

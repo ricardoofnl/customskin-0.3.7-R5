@@ -58,8 +58,7 @@ void DumpFingerprint() {
                 "network patches are unsafe on this build",
                 r5::kImageSize, r5::kTimeDateStamp);
 
-    // log the first bytes at a few anchor functions so the R5 offset table can be
-    // sanity-checked against the user's actual samp.dll (mismatch => wrong build)
+    // log the first bytes at a few anchor functions so the R5 offset table can be sanity-checked against the user's actual samp.dll (mismatch => wrong build)
     auto dump = [](const char* name, uintptr_t rva) {
         const auto* p = reinterpret_cast<const uint8_t*>(Addr(rva));
         CS_LOGI("  @%-28s rva 0x%06X : %02X %02X %02X %02X %02X %02X %02X %02X",
@@ -83,8 +82,7 @@ bool DebugChat(const char* fmt, ...) {
     va_end(args);
     buf[sizeof(buf) - 1] = '\0';
 
-    // chat object is created around the main menu; stay silent (no log spam)
-    // until it exists, so callers can poll cheaply
+    // chat object is created around the main menu; stay silent (no log spam) until it exists, so callers can poll cheaply
     if (!g_base) return false;
     void* chat = *reinterpret_cast<void**>(Addr(r5::kRefChat));
     if (!chat) return false;

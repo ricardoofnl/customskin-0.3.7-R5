@@ -14,9 +14,7 @@ namespace {
 std::vector<std::unique_ptr<urmem::patch>> g_patches;
 bool g_enabled = false;
 
-// patch a single code byte at `rva`, but only if it currently holds `expected`
-// this guards against a wrong build, an already-applied patch, or another mod
-// having modified the site
+// patch one code byte at rva, only if it still holds expected (guards a wrong build or double-patch)
 bool PatchByte(uintptr_t rva, uint8_t expected, uint8_t value) {
     auto addr = samp::Addr(rva);
     uint8_t cur = *reinterpret_cast<volatile uint8_t*>(addr);
@@ -42,8 +40,7 @@ bool Apply() {
         CS_LOGE("masq: not the validated 0.3.7-R5-1 build; refusing to apply DL masquerade");
         return false;
     }
-    // 4057 (0x0FD9) -> 4062 (0x0FDE): flip the low imm byte 0xD9 -> 0xDE at both the
-    // ChallengeResponse xor and the VersionNumber store
+    // 4057 -> 4062: flip the low byte 0xD9 -> 0xDE at the challenge xor and the version store
     if (!PatchByte(samp::r5::kChallengeImmLowByte, 0xD9, 0xDE)
         || !PatchByte(samp::r5::kVersionImmLowByte, 0xD9, 0xDE)) {
         g_patches.clear(); // rollback: urmem::patch dtor restores original bytes

@@ -1,14 +1,13 @@
 // artwork (custom-model) subsystem
-//
-// phase 1: registers handlers for the open.mp artwork RPCs and logs receipt so we
-// can confirm the dl masquerade (phase 2) makes them arrive
-// phase 3+: parses ModelRequest, drives the download pipeline, feeds the streamer
 #pragma once
 
 namespace artwork {
 
 // register the artwork rpc handlers with the net layer. call after net::Init()
 void Init();
+
+// drain finished downloads; once all are in, send FinishDownload. call each frame (main thread)
+void Pump();
 
 // a downloaded + RenderWare-loaded custom model
 struct ReadyModel {
@@ -21,15 +20,12 @@ struct ReadyModel {
 // look up a ready (clump+txd loaded) custom model by new id. false if not ready
 bool GetReadyModel(int newId, ReadyModel& out);
 
-// visit every ready (clump+txd loaded) custom model. `ctx` is passed through to `visit`.
-// allocation-free so the renderer can call it each frame
+// visit every loaded custom model (ctx passed through). allocation-free, safe to call each frame
 using ReadyVisitor = void (*)(const ReadyModel&, void* ctx);
 void ForEachReady(ReadyVisitor visit, void* ctx);
 
-// the renderer calls this when it notices the game's streamer destroyed one of our custom
-// clumps (it was borrowed into a base model's template and unloaded with it). we abandon our
-// now-dangling pointer WITHOUT freeing it again; if `reload` we read a fresh clump from cache
-// so the skin can be re-applied, otherwise we just drop it (teardown)
+// the streamer freed a clump we lent to a base template: forget the stale pointer (no re-free),
+// and reload a fresh one from cache if `reload`
 void OnCustomClumpLost(void* clump, bool reload);
 
 // rpc ids (see docs/protocol.md)

@@ -1,8 +1,4 @@
 // customskin-037 - asi entry point
-//
-// loaded into gta_sa.exe by an asi loader (vorbisFile.dll). spawns a worker
-// thread that waits for samp.dll, resolves the 0.3.7-R5 base, logs a fingerprint,
-// and (phase 1+) boots the networking/model subsystems
 #include <windows.h>
 
 #include "core/log.h"
@@ -15,9 +11,7 @@
 
 namespace {
 
-// poll for a module to appear, up to timeoutMs. returns its handle or nullptr
-// gta loads samp.dll shortly after the process starts; in single player it never
-// loads, so this doubles as our "is this a sa-mp session?" check
+// poll for a module to appear, up to timeoutMs. returns its handle or nullptr gta loads samp.dll shortly after the process starts; in single player it never loads, so this doubles as our "is this a sa-mp session?" check
 HMODULE WaitForModule(const char* name, DWORD timeoutMs) {
     const DWORD step = 100;
     DWORD waited = 0;
@@ -47,8 +41,7 @@ DWORD WINAPI MainThread(LPVOID) {
     samp::DumpFingerprint();
     CS_LOGI("Phase 0 online (samp.dll @ 0x%08X)", static_cast<unsigned>(samp::Base()));
 
-    // phase 1: RakNet/rpc plumbing + artwork rpc handlers (fire once the dl
-    // masquerade in phase 2 makes the server send them)
+    // RakNet/rpc plumbing + artwork rpc handlers
     if (net::Init()) {
         artwork::Init();
         CS_LOGI("Phase 1 online (RakNet hooks + artwork RPC handlers)");
@@ -56,27 +49,24 @@ DWORD WINAPI MainThread(LPVOID) {
         CS_LOGE("Phase 1 init failed (net::Init)");
     }
 
-    // phase 2a: identify as 0.3DL so open.mp enables the artwork path and sends us
-    // the custom-model RPCs. must be applied before connecting
+    // identify as 0.3DL so open.mp enables the artwork path and sends us the custom-model RPCs. must be applied before connecting
     if (masq::Apply()) {
         CS_LOGI("Phase 2a online (DL masquerade). Connect to your open.mp server; "
                 "expect 'artwork: RPC179 ModelRequest' in the log.");
     } else {
         CS_LOGW("Phase 2a NOT applied (see masq errors above); still a plain 0.3.7 client");
     }
-    // phase 2b: fix dl-format packets (SetPlayerSkin) so sa-mp applies a valid base
-    // skin instead of warning, and capture the custom skin id per player
+    // fix dl-format packets (SetPlayerSkin) so sa-mp applies a valid base skin instead of warning, and capture the custom skin id per player
     if (dlcompat::Init()) {
         CS_LOGI("Phase 2b online (DL packet compat: ScrSetPlayerSkin)");
     }
 
-    // phase 4.3: per-frame clump swap - render the custom model on the player's ped
+    // per-frame clump swap - render the custom model on the player's ped
     if (render::Init()) {
         CS_LOGI("Phase 4.3 online (clump-swap renderer)");
     }
 
-    // announce ourselves in chat once the chat object exists (created around the
-    // main menu). poll up to ~120s, then give up quietly
+    // announce ourselves in chat once the chat object exists (created around the main menu). poll up to ~120s, then give up quietly
     for (int i = 0; i < 1200; ++i) {
         if (samp::DebugChat("customskin-037 loaded (Phase 0) - samp.dll @ 0x%08X",
                             static_cast<unsigned>(samp::Base()))) {

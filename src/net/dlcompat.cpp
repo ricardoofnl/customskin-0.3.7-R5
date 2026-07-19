@@ -17,9 +17,7 @@ namespace {
 urmem::hook g_skinHook;
 std::unordered_map<uint16_t, uint32_t> g_playerCustomSkin; // playerId -> custom skin id
 
-// sa-mp ScrSetPlayerSkin(RPCParameters*), __cdecl
-// dl wire  : u16 PlayerID, u32 Skin(base), u32 CustomSkin   (10 bytes / 80 bits)
-// 0.3.7 wire: u32 PlayerID, u32 skin                        (8 bytes / 64 bits)
+// sa-mp ScrSetPlayerSkin(RPCParameters*), __cdecl dl wire : u16 PlayerID, u32 Skin(base), u32 CustomSkin (10 bytes / 80 bits) 0.3.7 wire: u32 PlayerID, u32 skin (8 bytes / 64 bits)
 void __cdecl Hooked_ScrSetPlayerSkin(RPCParameters* p) {
     if (masq::Enabled() && p && p->input && p->numberOfBitsOfData >= 80) {
         unsigned char* d = p->input;
@@ -41,9 +39,7 @@ void __cdecl Hooked_ScrSetPlayerSkin(RPCParameters* p) {
         *reinterpret_cast<uint32_t*>(d + 4) = skin;
         p->numberOfBitsOfData = 64;
 
-        // swap the base template to the custom clump NOW, before sa-mp rebuilds the ped in
-        // response to this skin. otherwise the ped clones the un-swapped template and the
-        // custom only shows up on a second assignment (the "trigger twice" bug)
+        // swap the base template to the custom clump NOW, before sa-mp rebuilds the ped in response to this skin. otherwise the ped clones the un-swapped template and the custom only shows up on a second assignment (the "trigger twice" bug)
         if (customSkin != 0)
             render::EnsureSwapForCustom(customSkin);
     }

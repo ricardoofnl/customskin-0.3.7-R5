@@ -1,6 +1,4 @@
-// simple thread-safe file logger. writes customskin.log next to gta_sa.exe
-// this is the primary, offset-independent phase 0 output: it works before any
-// samp.dll symbol is resolved, so it can report why later stages did/didn't run
+// thread-safe file logger, writes customskin.log next to gta_sa.exe. works before any samp.dll symbol is resolved
 #pragma once
 
 namespace cs {

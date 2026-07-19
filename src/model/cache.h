@@ -1,7 +1,4 @@
-// downloaded-model cache, under the sa-mp user files dir:
-//   documents/gta san andreas user files/samp/cache/customskin037/
-// files are keyed by crc + type, so a file already present with the right crc is
-// reused instead of re-downloaded
+// downloaded-model cache under the sa-mp user files dir, keyed by crc + type so files are reused
 #pragma once
 
 #include <cstdint>

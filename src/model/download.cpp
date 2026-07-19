@@ -1,11 +1,16 @@
 #include "model/download.h"
 
 #include "core/log.h"
+#include "model/crc32.h"
 
 #include <windows.h>
 #include <wininet.h>
 
+#include <condition_variable>
 #include <cstdio>
+#include <deque>
+#include <mutex>
+#include <thread>
 
 namespace dl {
 
@@ -47,6 +52,62 @@ bool Fetch(const std::string& url, const std::string& destPath) {
 
     CS_LOGI("dl: %s -> %s (%zu bytes)", url.c_str(), destPath.c_str(), total);
     return total > 0;
+}
+
+namespace {
+
+struct Job {
+    std::string url;
+    std::string dest;
+    uint32_t crc = 0;
+    bool isDff = false;
+};
+
+std::mutex g_mtx;                 // guards g_jobs and g_done
+std::condition_variable g_cv;
+std::deque<Job> g_jobs;           // pending downloads (worker consumes)
+std::vector<Result> g_done;       // finished downloads (main thread drains)
+std::once_flag g_workerOnce;
+
+// single detached worker: fetches queued files serially and crc-checks each. it only touches the
+// queues + its own file, never game state, so nothing is shared unsafely with the main thread
+void WorkerLoop() {
+    for (;;) {
+        Job job;
+        {
+            std::unique_lock<std::mutex> lk(g_mtx);
+            g_cv.wait(lk, [] { return !g_jobs.empty(); });
+            job = g_jobs.front();
+            g_jobs.pop_front();
+        }
+        Result r;
+        r.crc = job.crc;
+        r.isDff = job.isDff;
+        if (Fetch(job.url, job.dest))
+            r.ok = (crc::File(job.dest.c_str()) == job.crc);
+        {
+            std::lock_guard<std::mutex> lk(g_mtx);
+            g_done.push_back(r);
+        }
+    }
+}
+
+} // namespace
+
+void Enqueue(const std::string& url, const std::string& destPath, uint32_t crc, bool isDff) {
+    std::call_once(g_workerOnce, [] { std::thread(WorkerLoop).detach(); });
+    {
+        std::lock_guard<std::mutex> lk(g_mtx);
+        g_jobs.push_back(Job{ url, destPath, crc, isDff });
+    }
+    g_cv.notify_one();
+}
+
+std::vector<Result> Drain() {
+    std::vector<Result> out;
+    std::lock_guard<std::mutex> lk(g_mtx);
+    out.swap(g_done);
+    return out;
 }
 
 } // namespace dl

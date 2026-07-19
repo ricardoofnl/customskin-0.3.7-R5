@@ -40,8 +40,7 @@ void ApplyRegistrations() {
             reinterpret_cast<void*>(g_rak), g_wanted.size());
 }
 
-// CNetGame::Packet_ConnectionSucceeded(this, packet*) - thiscall
-// __fastcall(self=ecx, edx=edx, stack...) captures a thiscall on x86 msvc
+// CNetGame::Packet_ConnectionSucceeded(this, packet*) - thiscall __fastcall(self=ecx, edx=edx, stack...) captures a thiscall on x86 msvc
 void __fastcall Hooked_ConnectionSucceeded(void* self, void* /*edx*/, void* packet) {
     g_connHook.call<urmem::calling_convention::thiscall, void>(self, packet);
     CS_LOGI("rak: ConnectionSucceeded");

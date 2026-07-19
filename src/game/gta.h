@@ -1,13 +1,11 @@
-// gta sa 1.0 us (gta_sa.exe, ImageBase 0x400000) addresses
-// absolute VAs; source: DK22Pac/plugin-sdk (plugin_sa/game_sa). a runtime delta is
-// applied in case the exe is rebased (normally 0 for the classic 1.0 us build)
+// gta sa 1.0 us (gta_sa.exe, ImageBase 0x400000) addresses absolute VAs; source: DK22Pac/plugin-sdk (plugin_sa/game_sa). a runtime delta is applied in case the exe is rebased (normally 0 for the classic 1.0 us build)
 #pragma once
 
 #include <cstdint>
 
 namespace gta {
 
-// --- RenderWare stream / model / txd ---
+// RenderWare stream / model / txd ---
 constexpr uintptr_t RwStreamOpen = 0x7ECEF0;              // (RwStreamType, RwStreamAccessType, const void*) -> RwStream*
 constexpr uintptr_t RwStreamClose = 0x7ECE20;             // (RwStream*, void*)
 constexpr uintptr_t RwStreamFindChunk = 0x7ED2D0;         // (RwStream*, RwUInt32 type, RwUInt32* lenOut, RwUInt32* verOut) -> RwBool
@@ -18,14 +16,12 @@ constexpr uintptr_t RwTexDictionaryGetCurrent = 0x7F3A90; // () -> RwTexDictiona
 constexpr uintptr_t RwTexDictionarySetCurrent = 0x7F3A70; // (RwTexDictionary*)
 constexpr uintptr_t RwTexDictionaryDestroy = 0x7F36A0;    // (RwTexDictionary*)
 
-// --- model system / entity ---
+// model system / entity ---
 constexpr uintptr_t ms_modelInfoPtrs = 0xA9B0C8; // CBaseModelInfo*[20000]
 constexpr uintptr_t FindPlayerPed = 0x56E210;    // __cdecl (int id, -1 = local) -> CPed*
 constexpr int kModelInfo_RwObject = 0x1C;        // CBaseModelInfo::m_pRwClump offset
 
-// CStreaming::RequestModel(int modelId, int flags), __cdecl. verified in gta_sa.exe: indexes
-// ms_aInfoForModel with stride 0x14 and twiddles the per-model streaming flags byte. we use it
-// to keep a custom skin's base ped model resident so the clump swap lands before the ped rebuild
+// CStreaming::RequestModel(int modelId, int flags), __cdecl. verified in gta_sa.exe: indexes ms_aInfoForModel with stride 0x14 and twiddles the per-model streaming flags byte. we use it to keep a custom skin's base ped model resident so the clump swap lands before the ped rebuild
 constexpr uintptr_t CStreaming_RequestModel = 0x4087E0;
 constexpr int kStreamPriorityLoad = 0x10; // priority-request flag bit
 // CEntity vtable indices (thiscall via *(void***)ped)
