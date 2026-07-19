@@ -1,0 +1,44 @@
+name: release
+
+# manual only: trigger from the Actions tab and type the version. builds the .asi, zips it,
+# and publishes a GitHub release tagged with that version.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version / tag (e.g. v1.0.0)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build (Release | Win32)
+        run: msbuild build/customskin.vcxproj /p:Configuration=Release /p:Platform=Win32 /m
+
+      - name: Package zip
+        shell: pwsh
+        run: |
+          $ver = "${{ github.event.inputs.version }}"
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item build/bin/Release/customskin.asi dist/
+          Copy-Item README.md dist/
+          if (Test-Path LICENSE) { Copy-Item LICENSE dist/ }
+          if (Test-Path docs/protocol.md) { Copy-Item docs/protocol.md dist/ }
+          Compress-Archive -Path dist/* -DestinationPath "customskin-037-$ver.zip" -Force
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.version }}
+          name: customskin-037 ${{ github.event.inputs.version }}
+          files: customskin-037-*.zip
+          generate_release_notes: true

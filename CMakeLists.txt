@@ -18,6 +18,9 @@ endif()
 file(GLOB_RECURSE CUSTOMSKIN_SOURCES CONFIGURE_DEPENDS
      "${CMAKE_SOURCE_DIR}/src/*.cpp")
 
+# the RakNet BitStream lives under vendor/, not src/, so add it explicitly.
+list(APPEND CUSTOMSKIN_SOURCES "${CMAKE_SOURCE_DIR}/vendor/raknet/bitstream.cpp")
+
 add_library(customskin SHARED ${CUSTOMSKIN_SOURCES})
 
 target_compile_features(customskin PRIVATE cxx_std_17)
@@ -30,7 +33,7 @@ target_include_directories(customskin PRIVATE
 target_compile_definitions(customskin PRIVATE
     WIN32_LEAN_AND_MEAN NOMINMAX _CRT_SECURE_NO_WARNINGS)
 
-target_link_libraries(customskin PRIVATE wininet)
+target_link_libraries(customskin PRIVATE wininet shell32)
 
 # Static CRT: no runtime DLL dependency inside the game process.
 set_property(TARGET customskin PROPERTY
