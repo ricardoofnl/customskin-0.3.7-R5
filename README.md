@@ -63,4 +63,5 @@ they need re-checking if you point them at a different client. Only skins are ha
 - Packet-compat reference: [spmn/samp-client-compat](https://github.com/spmn/samp-client-compat).
 - Hooking: [spmn/urmem](https://github.com/spmn/urmem).
 - R5 addresses: [BlastHackNet/SAMP-API](https://github.com/BlastHackNet/SAMP-API).
+- RenderWare and GTA SA addresses: [DK22Pac/plugin-sdk](https://github.com/DK22Pac/plugin-sdk).
 - GTA SA class layouts: [AmyrAhmady/sampvoice](https://github.com/AmyrAhmady/sampvoice).
