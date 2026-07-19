@@ -31,3 +31,12 @@ CMakeFiles/
 # test placeholder model files (regenerate with test/make-models.sh)
 /test/models/*.dff
 /test/models/*.txd
+
+# IDA Pro databases (generated when reverse-engineering the binaries)
+*.id0
+*.id1
+*.id2
+*.nam
+*.til
+*.i64
+*.idb

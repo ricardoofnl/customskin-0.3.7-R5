@@ -87,7 +87,7 @@ bool DebugChat(const char* fmt, ...) {
     void* chat = *reinterpret_cast<void**>(Addr(r5::kRefChat));
     if (!chat) return false;
 
-    // CChat::AddMessage(this, D3DCOLOR color, const char* text) — thiscall
+    // CChat::AddMessage(this, D3DCOLOR color, const char* text)  thiscall
     urmem::call_function<urmem::calling_convention::thiscall, void>(
         Addr(r5::kCChat_AddMessage), chat, static_cast<unsigned long>(0xFFFFFFFF), buf);
     CS_LOGI("[chat] %s", buf);

@@ -58,7 +58,7 @@ they need re-checking if you point them at a different client. Only skins are ha
 
 ## References
 
-- Protocol: [openmultiplayer/open.mp](https://github.com/openmultiplayer/open.mp) —
+- Protocol: [openmultiplayer/open.mp](https://github.com/openmultiplayer/open.mp) 
   `Shared/NetCode/custommodels.hpp`, `Server/Components/CustomModels/`.
 - Packet-compat reference: [spmn/samp-client-compat](https://github.com/spmn/samp-client-compat).
 - Hooking: [spmn/urmem](https://github.com/spmn/urmem).

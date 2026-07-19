@@ -16,7 +16,7 @@ test/
 ## Prerequisites
 
 - An **open.mp server** build (`omp-server` + its `components/` folder). Linux-native
-  `omp-server` running directly on Fedora is simplest — the Wine GTA client reaches it via
+  `omp-server` running directly on Fedora is simplest  the Wine GTA client reaches it via
   `127.0.0.1`. (A Windows `omp-server.exe` under Wine works too.)
 - A Pawn compiler with a **recent omp-stdlib** (the `qawno/` that ships with open.mp), so
   `AddCharModel` and the artwork callbacks are declared.
@@ -51,10 +51,10 @@ test/
 
 ## Notes
 
-- `skin.dff` / `skin.txd` are **random placeholders** — enough to test masquerade + download +
+- `skin.dff` / `skin.txd` are **random placeholders**  enough to test masquerade + download +
   CRC (Phases 2b/3). They are not valid RenderWare models, so they will **not render**
   (Phase 4). For real rendering, drop a genuine custom skin's `.dff`/`.txd` in `models/`
   (keep the same names, or update `test.pwn`).
 - Regenerate placeholders: `bash test/make-models.sh`.
 - The webserver only serves clients that are connected players and send
-  `User-Agent: SAMP/0.3` — our downloader (Phase 3) does exactly that.
+  `User-Agent: SAMP/0.3`  our downloader (Phase 3) does exactly that.
