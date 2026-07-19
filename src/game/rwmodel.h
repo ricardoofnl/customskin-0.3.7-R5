@@ -20,4 +20,13 @@ Loaded LoadModel(const char* dffPath, const char* txdPath);
 // destroy loaded rw objects
 void Free(Loaded& m);
 
+// load a fresh clump into m (binding the existing m.txd) and assign m.clump, WITHOUT freeing
+// the previous m.clump - the caller uses this when the old clump was already destroyed for
+// us (e.g. the streamer unloaded the base model whose template we had borrowed). returns ok
+bool ReloadClump(Loaded& m, const char* dffPath);
+
+// ask the game streamer to load a model by id (CStreaming::RequestModel). used to keep a
+// custom skin's base ped model resident so the clump swap installs before the ped is rebuilt
+void RequestModel(int modelId);
+
 } // namespace rwmodel

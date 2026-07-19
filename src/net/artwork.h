@@ -26,6 +26,12 @@ bool GetReadyModel(int newId, ReadyModel& out);
 using ReadyVisitor = void (*)(const ReadyModel&, void* ctx);
 void ForEachReady(ReadyVisitor visit, void* ctx);
 
+// the renderer calls this when it notices the game's streamer destroyed one of our custom
+// clumps (it was borrowed into a base model's template and unloaded with it). we abandon our
+// now-dangling pointer WITHOUT freeing it again; if `reload` we read a fresh clump from cache
+// so the skin can be re-applied, otherwise we just drop it (teardown)
+void OnCustomClumpLost(void* clump, bool reload);
+
 // rpc ids (see docs/protocol.md)
 namespace rpc {
 constexpr unsigned char kModelRequest = 179;     // s->c

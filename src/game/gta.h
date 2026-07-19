@@ -22,6 +22,12 @@ constexpr uintptr_t RwTexDictionaryDestroy = 0x7F36A0;    // (RwTexDictionary*)
 constexpr uintptr_t ms_modelInfoPtrs = 0xA9B0C8; // CBaseModelInfo*[20000]
 constexpr uintptr_t FindPlayerPed = 0x56E210;    // __cdecl (int id, -1 = local) -> CPed*
 constexpr int kModelInfo_RwObject = 0x1C;        // CBaseModelInfo::m_pRwClump offset
+
+// CStreaming::RequestModel(int modelId, int flags), __cdecl. verified in gta_sa.exe: indexes
+// ms_aInfoForModel with stride 0x14 and twiddles the per-model streaming flags byte. we use it
+// to keep a custom skin's base ped model resident so the clump swap lands before the ped rebuild
+constexpr uintptr_t CStreaming_RequestModel = 0x4087E0;
+constexpr int kStreamPriorityLoad = 0x10; // priority-request flag bit
 // CEntity vtable indices (thiscall via *(void***)ped)
 constexpr int kVt_SetModelIndex = 5;
 constexpr int kVt_CreateRwObject = 7;

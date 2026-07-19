@@ -17,4 +17,9 @@ bool Init();
 // clumps are freed (reconnect / gmx / shutdown) so no base template is left dangling
 void RestoreAll();
 
+// apply the base-template swap for one custom skin id right now, if its model is downloaded.
+// called the instant a skin is assigned (before the game rebuilds the ped) so the custom
+// renders on the first assignment instead of only after a second one. no-op if not ready
+void EnsureSwapForCustom(unsigned customId);
+
 } // namespace render

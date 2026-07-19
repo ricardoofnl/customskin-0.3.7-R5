@@ -1,44 +1,98 @@
 // customskin-037 local test gamemode (open.mp)
 //
-// defines one custom player skin (id 20001, base 1). its model files skin.dff /
-// skin.txd live in ../models/ and are served by open.mp's artwork webserver, so a
-// dl client (our customskin.asi masquerading as 0.3DL) receives rpc 179 for it and
-// downloads them from http://<public_addr>:<artwork.port>/
+// defines two custom player skins on DIFFERENT base ids, to exercise the per-base
+// multi-model swap:
+//   skin A: id 20001, base 1  <- models/skin.dff  + models/skin.txd
+//   skin B: id 20002, base 2  <- models/skin2.dff + models/skin2.txd
+// their model files are served by open.mp's artwork webserver, so a dl client (our
+// customskin.asi masquerading as 0.3DL) receives rpc 179 for each and downloads them.
 //
+// on spawn the player wears a NORMAL skin - custom skins are applied only on demand with
+// /skin1 or /skin2, so the custom render is isolated from the spawn flow.
+//
+// note: skin2.dff/skin2.txd default to a copy of skin.dff/skin.txd (so it renders out of
+// the box, just looking the same). drop a DIFFERENT real 0.3DL skin's files in as
+// models/skin2.* to see two visually distinct skins.
+//
+// compile to gamemodes/test.amx (see test/readme.md) with a recent omp-stdlib
+
 #include <open.mp>
 
-#define CUSTOM_SKIN_ID   20001
-#define CUSTOM_SKIN_BASE 1
+#define SKIN_A_ID   20001
+#define SKIN_A_BASE 1
+#define SKIN_B_ID   20002
+#define SKIN_B_BASE 2
+
+// normal spawn skin (cj). deliberately NOT a custom base id (1/2) so it never picks up a
+// swapped template
+#define DEFAULT_SKIN 0
+
+// ls international airport (terminal apron, on the ground, facing the doors)
+#define SPAWN_X 1685.9645
+#define SPAWN_Y -2329.8933
+#define SPAWN_Z 13.5469
+#define SPAWN_A 180.0
 
 public OnGameModeInit()
 {
     SetGameModeText("customskin-037 test");
 
-    // register the custom skin. open.mp sends rpc 179 (ModelRequest) to dl clients
-    if (AddCharModel(CUSTOM_SKIN_BASE, CUSTOM_SKIN_ID, "skin.dff", "skin.txd"))
+    // register both custom skins. open.mp sends rpc 179 (ModelRequest) to dl clients
+    if (AddCharModel(SKIN_A_BASE, SKIN_A_ID, "skin.dff", "skin.txd"))
         print("[test] AddCharModel 20001 (base 1) OK");
     else
-        print("[test] AddCharModel FAILED - check models/skin.dff and models/skin.txd exist");
+        print("[test] AddCharModel 20001 FAILED - check models/skin.dff + skin.txd");
 
-    // a spawn class wearing the custom skin: this is the phase 4 render target, and it
-    // also exercises the dl-format class/spawn RPCs that phase 2b must handle
-    AddPlayerClass(CUSTOM_SKIN_ID, 1958.3783, 1343.1572, 15.3746, 269.1425);
+    if (AddCharModel(SKIN_B_BASE, SKIN_B_ID, "skin2.dff", "skin2.txd"))
+        print("[test] AddCharModel 20002 (base 2) OK");
+    else
+        print("[test] AddCharModel 20002 FAILED - check models/skin2.dff + skin2.txd");
+
+    // one spawn class with the normal skin, at ls airport
+    AddPlayerClass(DEFAULT_SKIN, SPAWN_X, SPAWN_Y, SPAWN_Z, SPAWN_A);
     return 1;
 }
 
 public OnPlayerConnect(playerid)
 {
-    SendClientMessage(playerid, 0xFFFFFFFF, "customskin-037 test: custom skin 20001 should download");
+    SendClientMessage(playerid, 0xFFFFFFFF,
+        "customskin-037 test: spawn with a normal skin, then type /skin1 or /skin2 for a custom skin");
     return 1;
 }
 
 public OnPlayerRequestClass(playerid, classid)
 {
-    SetPlayerPos(playerid, 1958.3783, 1343.1572, 15.3746);
-    SetPlayerFacingAngle(playerid, 269.1425);
-    SetPlayerCameraPos(playerid, 1960.5, 1343.1572, 15.9);
-    SetPlayerCameraLookAt(playerid, 1958.3783, 1343.1572, 15.3746);
+    SetPlayerPos(playerid, SPAWN_X, SPAWN_Y, SPAWN_Z);
+    SetPlayerFacingAngle(playerid, SPAWN_A);
+    // camera in front of the player (facing angle 180 = looking toward -Y) for a preview
+    SetPlayerCameraPos(playerid, SPAWN_X, SPAWN_Y - 3.0, SPAWN_Z + 0.7);
+    SetPlayerCameraLookAt(playerid, SPAWN_X, SPAWN_Y, SPAWN_Z);
     return 1;
+}
+
+public OnPlayerCommandText(playerid, cmdtext[])
+{
+    // custom skins are opt-in via command. the base differs (1 vs 2), so the per-base swap
+    // renders each one
+    if (strcmp(cmdtext, "/skin1", true) == 0 || strcmp(cmdtext, "/a", true) == 0)
+    {
+        SetPlayerSkin(playerid, SKIN_A_ID);
+        SendClientMessage(playerid, 0xFFFFFFFF, "switched to custom skin 20001 (base 1)");
+        return 1;
+    }
+    if (strcmp(cmdtext, "/skin2", true) == 0 || strcmp(cmdtext, "/b", true) == 0)
+    {
+        SetPlayerSkin(playerid, SKIN_B_ID);
+        SendClientMessage(playerid, 0xFFFFFFFF, "switched to custom skin 20002 (base 2)");
+        return 1;
+    }
+    if (strcmp(cmdtext, "/normal", true) == 0)
+    {
+        SetPlayerSkin(playerid, DEFAULT_SKIN);
+        SendClientMessage(playerid, 0xFFFFFFFF, "back to the normal skin");
+        return 1;
+    }
+    return 0;
 }
 
 // open.mp artwork callbacks - handy server-side visibility during testing
@@ -56,7 +110,12 @@ public OnPlayerFinishedDownloading(playerid, virtualworld)
 
 public OnPlayerSpawn(playerid)
 {
-    SetPlayerSkin(playerid, CUSTOM_SKIN_ID);
-    SendClientMessage(playerid, 0xFFFFFFFF, "spawned with custom skin 20001");
+    // always spawn with the normal skin at ls airport; force the position so the spawn is
+    // definitely there (not only during class selection)
+    SetPlayerSkin(playerid, DEFAULT_SKIN);
+    SetPlayerPos(playerid, SPAWN_X, SPAWN_Y, SPAWN_Z);
+    SetPlayerFacingAngle(playerid, SPAWN_A);
+    SendClientMessage(playerid, 0xFFFFFFFF,
+        "spawned at ls airport with the normal skin - type /skin1 or /skin2 for a custom skin");
     return 1;
 }

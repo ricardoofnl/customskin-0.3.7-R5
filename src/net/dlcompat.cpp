@@ -2,6 +2,7 @@
 
 #include "core/log.h"
 #include "core/samp.h"
+#include "game/render.h"
 #include "net/masquerade.h"
 
 #include <windows.h>
@@ -39,6 +40,12 @@ void __cdecl Hooked_ScrSetPlayerSkin(RPCParameters* p) {
         *reinterpret_cast<uint32_t*>(d + 0) = playerId;
         *reinterpret_cast<uint32_t*>(d + 4) = skin;
         p->numberOfBitsOfData = 64;
+
+        // swap the base template to the custom clump NOW, before sa-mp rebuilds the ped in
+        // response to this skin. otherwise the ped clones the un-swapped template and the
+        // custom only shows up on a second assignment (the "trigger twice" bug)
+        if (customSkin != 0)
+            render::EnsureSwapForCustom(customSkin);
     }
     g_skinHook.call<urmem::calling_convention::cdeclcall, void>(p);
 }

@@ -3,6 +3,7 @@
 #include "core/log.h"
 #include "core/samp.h"
 #include "game/gta.h"
+#include "game/rwmodel.h"
 #include "net/artwork.h"
 #include "net/dlcompat.h"
 
@@ -42,22 +43,33 @@ void** ClumpField(void* mi) {
 // wears it (limits ambient bleed onto same-base pedestrians). the base's own clump is saved
 // once so RestoreAll can put it back. new peds of that base clone our clump on creation
 void SwapOne(const artwork::ReadyModel& rm, void* /*ctx*/) {
-    if (!dlcompat::IsCustomAssigned(static_cast<uint32_t>(rm.newId))) return; // nobody wears it
     void* mi = ModelInfo(rm.baseId);
     if (!mi) return; // base model slot empty
     void** field = ClumpField(mi);
-    if (!*field) return;            // base skin not streamed in yet - wait
-    if (*field == rm.clump) return; // already pointing at our custom clump
 
+    // already swapped this base: check the streamer hasn't stolen our clump (independent of
+    // whether anyone still wears it, so we always notice the loss)
     auto it = g_swapped.find(rm.baseId);
-    if (it == g_swapped.end()) {
-        g_swapped[rm.baseId] = { *field, rm.clump }; // remember the game's own clump once
-        CS_LOGI("render: base %d template clump -> custom %d %p (spawn/respawn to see it)",
-                rm.baseId, rm.newId, rm.clump);
-    } else {
-        it->second.custom = rm.clump; // base re-pointed at a different custom on the same base
+    if (it != g_swapped.end()) {
+        if (*field == it->second.custom) return; // still installed, nothing to do
+        // the template no longer holds our clump: the streamer unloaded the base model and
+        // destroyed our borrowed clump (field is now null or a fresh real clump). abandon the
+        // dangling pointer and reload a fresh one, then re-swap on the next frame
+        artwork::OnCustomClumpLost(it->second.custom, /*reload*/ true);
+        g_swapped.erase(it);
+        return;
     }
+
+    // keep the base ped model resident even before it is worn, so the very first assignment
+    // finds a loaded template and renders on the first try (not only after a second trigger)
+    if (!*field) { rwmodel::RequestModel(rm.baseId); return; }
+
+    if (!dlcompat::IsCustomAssigned(static_cast<uint32_t>(rm.newId))) return; // loaded, unworn
+    if (*field == rm.clump) return; // already ours but unrecorded (rare) - leave it
+
+    g_swapped[rm.baseId] = { *field, rm.clump }; // remember the game's own clump once
     *field = rm.clump;
+    CS_LOGI("render: base %d template clump -> custom %d %p", rm.baseId, rm.newId, rm.clump);
 }
 
 void Tick() {
@@ -77,13 +89,23 @@ void RestoreAll() {
         void* mi = ModelInfo(kv.first);
         if (!mi) continue;
         void** field = ClumpField(mi);
-        // only restore if the template still holds our custom clump; if the streamer already
-        // replaced it we must not clobber the fresh clump with a stale pointer
-        if (*field == kv.second.custom) *field = kv.second.original;
+        if (*field == kv.second.custom) {
+            *field = kv.second.original; // put the game's own clump back
+        } else {
+            // streamer already destroyed our clump: don't clobber the fresh clump, and tell
+            // artwork to abandon the dangling pointer so the upcoming free won't double-free
+            artwork::OnCustomClumpLost(kv.second.custom, /*reload*/ false);
+        }
     }
     if (!g_swapped.empty())
         CS_LOGI("render: restored %zu base template(s) to their original clump", g_swapped.size());
     g_swapped.clear();
+}
+
+void EnsureSwapForCustom(unsigned customId) {
+    artwork::ReadyModel rm;
+    if (artwork::GetReadyModel(static_cast<int>(customId), rm))
+        SwapOne(rm, nullptr); // record original + install our clump before the ped is rebuilt
 }
 
 bool Init() {

@@ -10,4 +10,7 @@ set -euo pipefail
 cd "$(dirname "$0")/models"
 head -c 100000 /dev/urandom > skin.dff
 head -c 50000  /dev/urandom > skin.txd
-echo "generated: models/skin.dff (100000 b), models/skin.txd (50000 b)"
+# second skin (distinct random bytes -> distinct CRC) for the two-model protocol test
+head -c 100000 /dev/urandom > skin2.dff
+head -c 50000  /dev/urandom > skin2.txd
+echo "generated: models/skin.dff + skin.txd, models/skin2.dff + skin2.txd (random placeholders)"

@@ -38,11 +38,27 @@ std::vector<Model> g_models;
 uint32_t g_expected = 0;
 bool g_finished = false;
 
+// true if some already-registered model's file with this checksum was requested or is ready.
+// several models can share a file (e.g. a common txd), so we only ask the server once
+bool AlreadyInFlight(uint32_t crc) {
+    for (auto& m : g_models) {
+        if (m.dff.crc == crc && (m.dff.requested || m.dff.ready)) return true;
+        if (m.txd.crc == crc && (m.txd.requested || m.txd.ready)) return true;
+    }
+    return false;
+}
+
 // ask the server for a file's download url (or mark ready if already cached)
 void EnsureFile(FileReq& fr) {
     if (cache::HasValid(fr.crc, fr.isDff)) {
         fr.ready = true;
         CS_LOGI("artwork: %s 0x%08X already cached", fr.isDff ? "dff" : "txd", fr.crc);
+        return;
+    }
+    // a sibling model may already be downloading this exact file - piggyback on it
+    if (AlreadyInFlight(fr.crc)) {
+        fr.requested = true;
+        CS_LOGI("artwork: %s 0x%08X already requested by another model", fr.isDff ? "dff" : "txd", fr.crc);
         return;
     }
     BitStream bs;
@@ -58,6 +74,17 @@ FileReq* FindByCrc(uint32_t crc) {
         if (m.txd.crc == crc) return &m.txd;
     }
     return nullptr;
+}
+
+// mark every registered file with this checksum ready (models sharing a file all complete
+// off a single download). returns how many file slots were flipped
+int MarkReadyByCrc(uint32_t crc) {
+    int n = 0;
+    for (auto& m : g_models) {
+        if (m.dff.crc == crc && !m.dff.ready) { m.dff.ready = true; ++n; }
+        if (m.txd.crc == crc && !m.txd.ready) { m.txd.ready = true; ++n; }
+    }
+    return n;
 }
 
 // when every file of every expected model is present + verified, tell the server
@@ -144,8 +171,8 @@ void OnModelUrl(RPCParameters* p) {
     if (dl::Fetch(url, dest)) {
         uint32_t got = crc::File(dest.c_str());
         if (got == checksum) {
-            fr->ready = true;
-            CS_LOGI("artwork: verified %s 0x%08X", fr->isDff ? "dff" : "txd", checksum);
+            int n = MarkReadyByCrc(checksum); // mark all models sharing this file
+            CS_LOGI("artwork: verified %s 0x%08X (%d file slot(s))", fr->isDff ? "dff" : "txd", checksum, n);
         } else {
             CS_LOGE("artwork: CRC mismatch 0x%08X != downloaded 0x%08X", checksum, got);
         }
@@ -202,6 +229,25 @@ void ForEachReady(ReadyVisitor visit, void* ctx) {
         rm.clump = m.loaded.clump;
         rm.txd = m.loaded.txd;
         visit(rm, ctx);
+    }
+}
+
+void OnCustomClumpLost(void* clump, bool reload) {
+    for (auto& m : g_models) {
+        if (m.loaded.clump != clump) continue;
+        m.loaded.clump = nullptr; // abandon: the streamer already destroyed it, don't re-free
+        if (reload) {
+            std::string dffPath = cache::PathFor(m.dff.crc, true);
+            if (rwmodel::ReloadClump(m.loaded, dffPath.c_str()))
+                CS_LOGI("artwork: model %d clump was unloaded by streamer -> reloaded %p",
+                        m.newId, m.loaded.clump);
+            else
+                CS_LOGW("artwork: model %d clump lost, reload failed (skin reverts to base "
+                        "until next reconnect)", m.newId);
+        } else {
+            CS_LOGI("artwork: model %d clump abandoned (teardown)", m.newId);
+        }
+        return;
     }
 }
 
