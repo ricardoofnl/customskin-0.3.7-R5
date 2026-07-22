@@ -1,7 +1,5 @@
-# Build output
-/build/bin/
-/build/obj/
-/build/
+/build/*
+!/build/customskin.vcxproj
 *.asi
 *.dll
 *.exp
