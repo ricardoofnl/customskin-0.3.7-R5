@@ -29,6 +29,19 @@ constexpr uintptr_t kCNetGame_Packet_ConnectionSucceeded = 0xAD80; // anchor (au
 // ScrSetPlayerSkin(RPCParameters*), __cdecl. dl adds a u32 CustomSkin that misaligns the 0.3.7 parser
 constexpr uintptr_t kScrSetPlayerSkin = 0x19190;
 
+// dormant native 0.3DL artwork/custom-model RPC handlers. R5's samp.dll contains the full DL
+// custom-model client (download + model manager + render) but never registers these incoming
+// handlers (0 xrefs). registering them activates the native pipeline. void __cdecl(RPCParameters*).
+constexpr uintptr_t kNativeModelRequest = 0x11EB0;      // RPC179 s->c: register model, build manager
+constexpr uintptr_t kNativeModelUrl = 0x120B0;          // RPC183 s->c: url / inline file bytes
+constexpr uintptr_t kNativeDownloadCompleted = 0xEC30;  // RPC185 s->c: finalize + unfreeze
+constexpr uintptr_t kNativeModelReset = 0xEBA0;         // s->c: reset/clear manager (RPC id TBD; for reconnect/gmx)
+
+// native download dialog. the "Updating models.." progress client + its per-file % updater. our
+// hybrid downloads out-of-band, so we call the updater ourselves to unstick the dialog from 0%.
+constexpr uintptr_t kDownloadClient = 0x26EB58;         // CHTTPClient* (dialog + per-file slots)
+constexpr uintptr_t kDownloadUiUpdate = 0x6ACE0;        // __thiscall(client, fileType,crc,state,bytes,size,i64): state 4=done
+
 // dl masquerade patch sites: RPC_ClientJoin builds version 4057 (0x0FD9) at the challenge xor and
 // the version store; we flip the low byte to 0xDE (4062) at each
 constexpr uintptr_t kChallengeImmLowByte = 0xAE64; // 0xD9 -> 0xDE

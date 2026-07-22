@@ -7,6 +7,7 @@
 #include "net/artwork.h"
 #include "net/dlcompat.h"
 #include "net/masquerade.h"
+#include "net/nativeart.h"
 #include "net/raknet.h"
 
 namespace {
@@ -42,34 +43,39 @@ DWORD WINAPI MainThread(LPVOID) {
     samp::DumpFingerprint();
     CS_LOGI("samp.dll resolved @ 0x%08X", static_cast<unsigned>(samp::Base()));
 
-    // RakNet/rpc plumbing + artwork rpc handlers
+    // RakNet plumbing, then activate samp.dll's dormant native 0.3DL client. It downloads every
+    // custom model into its per-server cache and renders custom OBJECTS natively (ScrCreateObject
+    // -> CObjectPool::Create). Custom SKINS can't render through R5's native client, so artwork
+    // mirrors them out of the native model manager and our clump-swap renderer draws them.
     if (net::Init()) {
+        nativeart::Init();
         artwork::Init();
-        CS_LOGI("net + artwork RPC handlers ready");
+        CS_LOGI("net + native objects + skin clump-swap ready");
     } else {
         CS_LOGE("net init failed");
     }
 
     // identify as 0.3DL so open.mp enables artwork. must be applied before connecting
     if (masq::Apply()) {
-        CS_LOGI("DL masquerade on; connect and expect 'artwork: RPC179 ModelRequest' in the log");
+        CS_LOGI("DL masquerade on; connect and expect custom objects + skins");
     } else {
         CS_LOGW("DL masquerade NOT applied (see masq errors above); still a plain 0.3.7 client");
     }
+
     // fix dl SetPlayerSkin so sa-mp applies a valid base skin, and capture the custom skin per player
     if (dlcompat::Init()) {
         CS_LOGI("DL packet compat on (ScrSetPlayerSkin)");
     }
 
-    // per-frame clump swap - render the custom model on the player's ped
+    // per-frame clump swap - draw the custom skin's clump on the player's ped (skins only; objects
+    // are rendered natively above)
     if (render::Init()) {
-        CS_LOGI("clump-swap renderer on");
+        CS_LOGI("clump-swap renderer on (skins)");
     }
 
     // announce ourselves in chat once it exists; poll up to ~120s then give up
     for (int i = 0; i < 1200; ++i) {
-        if (samp::DebugChat("customskin-037 loaded - samp.dll @ 0x%08X",
-                            static_cast<unsigned>(samp::Base()))) {
+        if (samp::DebugChat("customskin loaded")) {
             break;
         }
         Sleep(100);

@@ -66,6 +66,7 @@
     <ClCompile Include="..\src\net\artwork.cpp" />
     <ClCompile Include="..\src\net\masquerade.cpp" />
     <ClCompile Include="..\src\net\dlcompat.cpp" />
+    <ClCompile Include="..\src\net\nativeart.cpp" />
     <ClCompile Include="..\src\model\crc32.cpp" />
     <ClCompile Include="..\src\model\cache.cpp" />
     <ClCompile Include="..\src\model\download.cpp" />
@@ -79,6 +80,7 @@
     <ClInclude Include="..\src\net\raknet.h" />
     <ClInclude Include="..\src\net\artwork.h" />
     <ClInclude Include="..\src\net\masquerade.h" />
+    <ClInclude Include="..\src\net\nativeart.h" />
     <ClInclude Include="..\vendor\urmem\urmem.hpp" />
     <ClInclude Include="..\vendor\raknet\rakclient.h" />
     <ClInclude Include="..\vendor\raknet\bitstream.h" />

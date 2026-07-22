@@ -23,6 +23,12 @@
 #define SKIN_B_ID   20002
 #define SKIN_B_BASE 2
 
+// custom OBJECT (AddSimpleModel, type 0). NOTE: open.mp object custom ids must be NEGATIVE,
+// in the range -1000 .. -30000 (see open.mp AddSimpleModel docs). OBJ_BASE is an existing
+// object model whose properties are cloned. object.dff/object.txd live in test/models.
+#define OBJ_ID   -1001
+#define OBJ_BASE 1225
+
 // normal spawn skin (cj). deliberately NOT a custom base id (1/2) so it never picks up a
 // swapped template
 #define DEFAULT_SKIN 0
@@ -47,6 +53,13 @@ public OnGameModeInit()
         print("[test] AddCharModel 20002 (base 2) OK");
     else
         print("[test] AddCharModel 20002 FAILED - check models/skin2.dff + skin2.txd");
+
+    // register a custom object and place one next to the spawn so it renders on connect
+    if (AddSimpleModel(-1, OBJ_BASE, OBJ_ID, "object.dff", "object.txd"))
+        print("[test] AddSimpleModel -1001 (base 1225) OK");
+    else
+        print("[test] AddSimpleModel -1001 FAILED - check base id / models/object.*");
+    CreateObject(OBJ_ID, SPAWN_X + 3.0, SPAWN_Y, SPAWN_Z, 0.0, 0.0, 0.0);
 
     // one spawn class with the normal skin, at ls airport
     AddPlayerClass(DEFAULT_SKIN, SPAWN_X, SPAWN_Y, SPAWN_Z, SPAWN_A);

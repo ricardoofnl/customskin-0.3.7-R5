@@ -3,191 +3,92 @@
 #include "core/log.h"
 #include "game/render.h"
 #include "game/rwmodel.h"
-#include "model/cache.h"
-#include "model/download.h"
-#include "net/raknet.h"
+#include "net/nativeart.h"
 
 #include <cstdint>
-#include <string>
 #include <vector>
 
-#include <raknet/rakclient.h> // RPCParameters, BitStream, BITS_TO_BYTES
+// Custom SKINS can't render through R5's native 0.3DL client - only objects can. But samp.dll still
+// downloads every skin's dff/txd into its per-server cache and tracks it in the native model
+// manager. So we don't own the artwork RPCs (nativeart does, for the object path); instead we mirror
+// the skin entries out of the native manager and hand their loaded clumps to the clump-swap renderer.
 
 namespace artwork {
 namespace {
 
-struct FileReq {
-    uint32_t crc = 0;
-    uint32_t size = 0;
-    bool isDff = false;
-    bool ready = false;
-    bool requested = false;
-};
-
 struct Model {
     int32_t newId = 0;
     int32_t baseId = 0;
-    uint8_t type = 0;
-    FileReq dff;
-    FileReq txd;
-    rwmodel::Loaded loaded; // filled on DownloadCompleted
+    uint32_t dffCrc = 0;
+    uint32_t txdCrc = 0;
+    bool ready = false;     // samp.dll finished downloading + verifying both files
+    rwmodel::Loaded loaded; // RW clump+txd, loaded from the native cache once ready
 };
 
-std::vector<Model> g_models;
-uint32_t g_expected = 0;
-bool g_finished = false;
+std::vector<Model> g_models;              // custom skins mirrored from the native manager
+const void* g_managerToken = nullptr;     // last-seen manager identity (changes on reconnect/gmx)
+int g_lastSkinCount = 0;
 
-// true if some already-registered model's file with this checksum was requested or is ready. several models can share a file (e.g. a common txd), so we only ask the server once
-bool AlreadyInFlight(uint32_t crc) {
-    for (auto& m : g_models) {
-        if (m.dff.crc == crc && (m.dff.requested || m.dff.ready)) return true;
-        if (m.txd.crc == crc && (m.txd.requested || m.txd.ready)) return true;
-    }
-    return false;
-}
-
-// ask the server for a file's download url (or mark ready if already cached)
-void EnsureFile(FileReq& fr) {
-    if (cache::HasValid(fr.crc, fr.isDff)) {
-        fr.ready = true;
-        CS_LOGI("artwork: %s 0x%08X already cached", fr.isDff ? "dff" : "txd", fr.crc);
-        return;
-    }
-    // a sibling model may already be downloading this exact file - piggyback on it
-    if (AlreadyInFlight(fr.crc)) {
-        fr.requested = true;
-        CS_LOGI("artwork: %s 0x%08X already requested by another model", fr.isDff ? "dff" : "txd", fr.crc);
-        return;
-    }
-    BitStream bs;
-    bs.Write(fr.crc); // u32 checksum
-    net::SendRPC(fr.isDff ? rpc::kRequestDFF : rpc::kRequestTXD, &bs);
-    fr.requested = true;
-    CS_LOGI("artwork: requested %s 0x%08X", fr.isDff ? "dff" : "txd", fr.crc);
-}
-
-FileReq* FindByCrc(uint32_t crc) {
-    for (auto& m : g_models) {
-        if (m.dff.crc == crc) return &m.dff;
-        if (m.txd.crc == crc) return &m.txd;
-    }
+Model* Find(int32_t newId) {
+    for (auto& m : g_models) if (m.newId == newId) return &m;
     return nullptr;
 }
 
-// mark every registered file with this checksum ready (models sharing a file all complete off a single download). returns how many file slots were flipped
-int MarkReadyByCrc(uint32_t crc) {
-    int n = 0;
-    for (auto& m : g_models) {
-        if (m.dff.crc == crc && !m.dff.ready) { m.dff.ready = true; ++n; }
-        if (m.txd.crc == crc && !m.txd.ready) { m.txd.ready = true; ++n; }
-    }
-    return n;
+// forget every mirrored skin: put swapped base templates back first, then free our clumps
+void ResetAll() {
+    render::RestoreAll();
+    for (auto& m : g_models) rwmodel::Free(m.loaded);
+    g_models.clear();
+    g_lastSkinCount = 0;
 }
 
-// when every file of every expected model is present + verified, tell the server
-void MaybeFinish() {
-    if (g_finished || g_expected == 0 || g_models.size() < g_expected) return;
-    for (auto& m : g_models)
-        if (!m.dff.ready || !m.txd.ready) return;
-    g_finished = true;
-    net::SendEmptyRPC(rpc::kFinishDownload);
-    CS_LOGI("artwork: all %zu model(s) ready -> sent FinishDownload(184)", g_models.size());
-}
-
-// 179 ModelRequest (s->c): store the model, then request/verify its files
-void OnModelRequest(RPCParameters* p) {
-    if (!p || !p->input) return;
-    BitStream bs(p->input, BITS_TO_BYTES(p->numberOfBitsOfData), false);
-
-    uint32_t poolID = 0, dffCrc = 0, txdCrc = 0, dffSize = 0, txdSize = 0;
-    int32_t count = 0, vw = 0, baseId = 0, newId = 0;
-    uint8_t type = 0, timeOn = 0, timeOff = 0;
-
-    bs.Read(poolID);
-    bs.Read(count);
-    bs.Read(type);
-    bs.Read(vw);
-    bs.Read(baseId);
-    bs.Read(newId);
-    bs.Read(dffCrc);
-    bs.Read(txdCrc);
-    bs.Read(dffSize);
-    bs.Read(txdSize);
-    bs.Read(timeOn);
-    bs.Read(timeOff);
-
-    CS_LOGI("artwork: RPC179 ModelRequest #%u/%d type=%u base=%d new=%d dff=0x%08X(%u) txd=0x%08X(%u)",
-            poolID, count, type, baseId, newId, dffCrc, dffSize, txdCrc, txdSize);
-
-    // poolID 0 begins a fresh model list (also handles reconnect / gmx re-send). put any swapped base templates back to the game's own clump BEFORE freeing the custom clumps they point at, then drop the old models so nothing is left dangling
-    if (poolID == 0) {
-        render::RestoreAll();
-        for (auto& m : g_models) rwmodel::Free(m.loaded);
-        g_models.clear();
-        g_expected = static_cast<uint32_t>(count);
-        g_finished = false;
+// mirror one native-manager skin entry (add if new, refresh its ready flag)
+void Sync(const nativeart::ManagerSkin& s, void*) {
+    Model* m = Find(s.newId);
+    if (!m) {
+        g_models.push_back(Model{ s.newId, s.baseId, s.dffCrc, s.txdCrc, false, {} });
+        m = &g_models.back();
+        CS_LOGI("artwork: skin %d (base %d) dff=0x%08X txd=0x%08X mirrored from native manager",
+                s.newId, s.baseId, s.dffCrc, s.txdCrc);
     }
-
-    Model m;
-    m.newId = newId;
-    m.baseId = baseId;
-    m.type = type;
-    m.dff = { dffCrc, dffSize, /*isDff*/ true, false, false };
-    m.txd = { txdCrc, txdSize, /*isDff*/ false, false, false };
-    EnsureFile(m.dff);
-    EnsureFile(m.txd);
-    g_models.push_back(m);
-
-    MaybeFinish();
-}
-
-// 183 ModelUrl (s->c): u8(=6), u8 fileType, u32 checksum, dynstr8 url. download + verify
-void OnModelUrl(RPCParameters* p) {
-    if (!p || !p->input) return;
-    BitStream bs(p->input, BITS_TO_BYTES(p->numberOfBitsOfData), false);
-
-    uint8_t prefix = 0, fileType = 0, urlLen = 0;
-    uint32_t checksum = 0;
-    char url[256] = {0};
-    bs.Read(prefix);
-    bs.Read(fileType);
-    bs.Read(checksum);
-    bs.Read(urlLen);
-    if (urlLen && urlLen < sizeof(url)) bs.Read(url, urlLen);
-
-    FileReq* fr = FindByCrc(checksum);
-    if (!fr) {
-        CS_LOGW("artwork: RPC183 ModelUrl for unknown crc 0x%08X (url=%s)", checksum, url);
-        return;
-    }
-    CS_LOGI("artwork: RPC183 ModelUrl %s 0x%08X url=\"%s\"", fr->isDff ? "dff" : "txd", checksum, url);
-
-    // hand the fetch+verify to the background worker so a slow/large file never freezes the net/main thread. the result is applied in Pump() (main thread) once the worker finishes
-    std::string dest = cache::PathFor(checksum, fr->isDff);
-    dl::Enqueue(url, dest, checksum, fr->isDff);
-}
-
-// 185 DownloadCompleted (s->c): server acknowledged our FinishDownload
-void OnDownloadCompleted(RPCParameters* /*p*/) {
-    CS_LOGI("artwork: RPC185 DownloadCompleted - server acknowledged (%zu models cached)",
-            g_models.size());
-
-    // prove RenderWare can parse the downloaded files (resident load) with the random placeholder files this fails gracefully (no clump chunk); with a real skin's .dff/.txd it produces a clump + txd
-    for (auto& m : g_models) {
-        if (m.loaded.ok()) continue; // already loaded
-        std::string dffPath = cache::PathFor(m.dff.crc, true);
-        std::string txdPath = cache::PathFor(m.txd.crc, false);
-        m.loaded = rwmodel::LoadModel(dffPath.c_str(), txdPath.c_str());
-        if (m.loaded.ok())
-            CS_LOGI("artwork: model %d RenderWare-loaded OK (clump+txd resident)", m.newId);
-        else
-            CS_LOGW("artwork: model %d RW-load incomplete (clump=%p txd=%p) - invalid/random file?",
-                    m.newId, m.loaded.clump, m.loaded.txd);
-    }
-    // (render::Tick) applies these loaded clumps to peds
+    m->ready = s.ready;
 }
 
 } // namespace
+
+void Init() {
+    CS_LOGI("artwork: skin clump-swap active (skins sourced from samp.dll's native manager + cache)");
+}
+
+// each frame: resync the skin set from the native manager, then load the clump for any skin whose
+// files samp.dll has finished caching. render::Tick() then swaps those clumps onto peds.
+void Pump() {
+    // reconnect / gmx: samp.dll rebuilt (or cleared) the manager - drop stale mirrors + clumps
+    const void* token = nativeart::ManagerToken();
+    int skinCount = nativeart::ForEachSkin(nullptr, nullptr);
+    bool reset = (token != g_managerToken) || (skinCount < g_lastSkinCount);
+    if (reset && (g_managerToken != nullptr || !g_models.empty())) ResetAll();
+    g_managerToken = token;
+    g_lastSkinCount = skinCount;
+
+    nativeart::ForEachSkin(&Sync, nullptr);
+
+    // drive samp.dll's own download dialog off the files our hybrid finished (else it sticks at 0%)
+    nativeart::PumpProgress();
+
+    for (auto& m : g_models) {
+        if (m.loaded.ok() || !m.ready) continue;
+        char dffPath[512], txdPath[512];
+        if (!nativeart::CachePath(m.dffCrc, true, dffPath, sizeof(dffPath))) continue;
+        if (!nativeart::CachePath(m.txdCrc, false, txdPath, sizeof(txdPath))) continue;
+        m.loaded = rwmodel::LoadModel(dffPath, txdPath);
+        if (m.loaded.ok())
+            CS_LOGI("artwork: skin %d RenderWare-loaded from native cache (clump+txd)", m.newId);
+        else
+            CS_LOGW("artwork: skin %d RW-load incomplete (clump=%p txd=%p) - bad file?",
+                    m.newId, m.loaded.clump, m.loaded.txd);
+    }
+}
 
 bool GetReadyModel(int newId, ReadyModel& out) {
     for (auto& m : g_models) {
@@ -218,40 +119,21 @@ void ForEachReady(ReadyVisitor visit, void* ctx) {
 void OnCustomClumpLost(void* clump, bool reload) {
     for (auto& m : g_models) {
         if (m.loaded.clump != clump) continue;
-        m.loaded.clump = nullptr; // abandon: the streamer already destroyed it, don't re-free
+        m.loaded.clump = nullptr; // streamer already destroyed it - don't re-free
         if (reload) {
-            std::string dffPath = cache::PathFor(m.dff.crc, true);
-            if (rwmodel::ReloadClump(m.loaded, dffPath.c_str()))
-                CS_LOGI("artwork: model %d clump was unloaded by streamer -> reloaded %p",
+            char dffPath[512];
+            if (nativeart::CachePath(m.dffCrc, true, dffPath, sizeof(dffPath)) &&
+                rwmodel::ReloadClump(m.loaded, dffPath))
+                CS_LOGI("artwork: skin %d clump was unloaded by streamer -> reloaded %p",
                         m.newId, m.loaded.clump);
             else
-                CS_LOGW("artwork: model %d clump lost, reload failed (skin reverts to base "
-                        "until next reconnect)", m.newId);
+                CS_LOGW("artwork: skin %d clump lost, reload failed (reverts to base until reconnect)",
+                        m.newId);
         } else {
-            CS_LOGI("artwork: model %d clump abandoned (teardown)", m.newId);
+            CS_LOGI("artwork: skin %d clump abandoned (teardown)", m.newId);
         }
         return;
     }
-}
-
-void Pump() {
-    std::vector<dl::Result> results = dl::Drain();
-    for (const auto& r : results) {
-        if (r.ok) {
-            int n = MarkReadyByCrc(r.crc); // mark all models sharing this file
-            CS_LOGI("artwork: verified %s 0x%08X (%d file slot(s))", r.isDff ? "dff" : "txd", r.crc, n);
-        } else {
-            CS_LOGE("artwork: async download/verify failed for 0x%08X", r.crc);
-        }
-    }
-    if (!results.empty()) MaybeFinish();
-}
-
-void Init() {
-    net::RegisterIncomingRPC(rpc::kModelRequest, &OnModelRequest);
-    net::RegisterIncomingRPC(rpc::kModelUrl, &OnModelUrl);
-    net::RegisterIncomingRPC(rpc::kDownloadCompleted, &OnDownloadCompleted);
-    CS_LOGI("artwork: registered RPC handlers 179/183/185");
 }
 
 } // namespace artwork
